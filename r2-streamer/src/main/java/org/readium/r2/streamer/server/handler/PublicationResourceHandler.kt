@@ -110,7 +110,8 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
                     }
 
             } else {
-                createResponse(Status.PARTIAL_CONTENT, mimeType, ResourceInputStream(resource, startFrom..endAt))
+                val responseStream = ResourceInputStream(resource, autocloseResource = true, range = startFrom..endAt)
+                createResponse(Status.PARTIAL_CONTENT, mimeType, responseStream)
                     .apply {
                         addHeader("Content-Range", "bytes $startFrom-$endAt/$dataLength")
                         addHeader("ETag", etag)
@@ -123,7 +124,7 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
                         resource.close()
                     }
             else {
-                createResponse(Status.OK, mimeType, ResourceInputStream(resource))
+                createResponse(Status.OK, mimeType, ResourceInputStream(resource, autocloseResource = true))
                     .apply {
                         addHeader("ETag", etag)
                     }
@@ -132,7 +133,7 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
     }
 
     private fun createResponse(status: Status, mimeType: String, data: InputStream): Response {
-        val response = newChunkedResponse(status, mimeType, data)
+        val response = newChunkedResponse(status, mimeType, data.buffered())
         response.addHeader("Accept-Ranges", "bytes")
         return response
     }
