@@ -20,6 +20,8 @@ import org.readium.r2.shared.format.MediaType
 import org.readium.r2.shared.publication.Manifest
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.PerResourcePositionsService
+import org.readium.r2.shared.publication.services.locatorServiceFactory
+import org.readium.r2.shared.publication.services.positionsServiceFactory
 import org.readium.r2.shared.util.File
 
 import org.readium.r2.shared.util.logging.WarningLogger
@@ -30,6 +32,7 @@ import org.readium.r2.streamer.container.PublicationContainer
 import org.readium.r2.streamer.extensions.fromFile
 import org.readium.r2.streamer.fetcher.LcpDecryptor
 import org.readium.r2.streamer.parser.PubBox
+import org.readium.r2.streamer.parser.audio.AudioLocatorService
 import org.readium.r2.streamer.toPublicationType
 import java.io.FileNotFoundException
 
@@ -44,12 +47,13 @@ class ReadiumWebPubParser(private val openPdf: OpenPdfDocument? = null) : Public
         fetcher: Fetcher,
         warnings: WarningLogger?
     ): Publication.Builder? {
+        val format = file.format() ?: return null
 
-        if (file.format()?.mediaType?.isReadiumWebPubProfile != true)
+        if (!format.mediaType.isReadiumWebPubProfile)
             return null
 
         val manifest =
-            if (file.format()?.mediaType?.isRwpm == true) {
+            if (format.mediaType.isRwpm) {
                 val manifestLink = fetcher.links().firstOrNull()
                     ?: error("Empty fetcher.")
                 val manifestJson = fetcher.get(manifestLink).use {
@@ -71,20 +75,20 @@ class ReadiumWebPubParser(private val openPdf: OpenPdfDocument? = null) : Public
         // Checks the requirements from the LCPDF specification.
         // https://readium.org/lcp-specs/notes/lcp-for-pdf.html
         val readingOrder = manifest.readingOrder
-        if (file.format() == Format.LCP_PROTECTED_PDF && (readingOrder.isEmpty() || !readingOrder.all { it.mediaType?.matches(MediaType.PDF) == true })) {
+        if (format == Format.LCP_PROTECTED_PDF && (readingOrder.isEmpty() || !readingOrder.all { it.mediaType?.matches(MediaType.PDF) == true })) {
             throw Exception("Invalid LCP Protected PDF.")
         }
 
-        val positionsService = when(file.format()) {
-            Format.LCP_PROTECTED_PDF ->
-                openPdf?.let { LcpdfPositionsService.create(it) }
-            Format.READIUM_AUDIOBOOK_MANIFEST, Format.READIUM_AUDIOBOOK, Format.LCP_PROTECTED_AUDIOBOOK ->
-                PerResourcePositionsService.createFactory(fallbackMediaType = "audio/*")
-            Format.DIVINA_MANIFEST, Format.DIVINA ->
-                PerResourcePositionsService.createFactory("image/*")
-            else -> null
+        val servicesBuilder = Publication.ServicesBuilder().apply {
+            when (format) {
+                Format.LCP_PROTECTED_PDF ->
+                    positionsServiceFactory = openPdf?.let { LcpdfPositionsService.create(it) }
+                Format.DIVINA_MANIFEST, Format.DIVINA ->
+                    positionsServiceFactory = PerResourcePositionsService.createFactory("image/*")
+                Format.READIUM_AUDIOBOOK, Format.READIUM_AUDIOBOOK_MANIFEST, Format.LCP_PROTECTED_AUDIOBOOK ->
+                    locatorServiceFactory = AudioLocatorService.createFactory()
+            }
         }
-        val servicesBuilder = Publication.ServicesBuilder(positions = positionsService)
 
         return Publication.Builder(manifest, fetcher, servicesBuilder)
     }
