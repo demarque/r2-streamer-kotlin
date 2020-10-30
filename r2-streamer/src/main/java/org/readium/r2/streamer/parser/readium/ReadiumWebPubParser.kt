@@ -9,6 +9,7 @@
 
 package org.readium.r2.streamer.parser.readium
 
+import android.content.Context
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.readium.r2.shared.PdfSupport
@@ -25,7 +26,8 @@ import org.readium.r2.shared.publication.services.positionsServiceFactory
 import org.readium.r2.shared.util.File
 
 import org.readium.r2.shared.util.logging.WarningLogger
-import org.readium.r2.shared.util.pdf.OpenPdfDocument
+import org.readium.r2.shared.util.pdf.PdfDocumentFactory
+import org.readium.r2.streamer.DefaultPdfDocumentFactory
 import org.readium.r2.streamer.PublicationParser
 import org.readium.r2.streamer.container.ContainerError
 import org.readium.r2.streamer.container.PublicationContainer
@@ -40,7 +42,9 @@ import java.io.FileNotFoundException
  * Parses any Readium Web Publication package or manifest, e.g. WebPub, Audiobook, DiViNa, LCPDF...
  */
 @OptIn(PdfSupport::class)
-class ReadiumWebPubParser(private val openPdf: OpenPdfDocument? = null) : PublicationParser, org.readium.r2.streamer.parser.PublicationParser {
+class ReadiumWebPubParser(private val pdfFactory: PdfDocumentFactory? = null) : PublicationParser, org.readium.r2.streamer.parser.PublicationParser {
+
+    constructor(context: Context) : this(pdfFactory = DefaultPdfDocumentFactory(context))
 
     override suspend fun parse(
         file: File,
@@ -82,7 +86,7 @@ class ReadiumWebPubParser(private val openPdf: OpenPdfDocument? = null) : Public
         val servicesBuilder = Publication.ServicesBuilder().apply {
             when (format) {
                 Format.LCP_PROTECTED_PDF ->
-                    positionsServiceFactory = openPdf?.let { LcpdfPositionsService.create(it) }
+                    positionsServiceFactory = pdfFactory?.let { LcpdfPositionsService.create(it) }
                 Format.DIVINA_MANIFEST, Format.DIVINA ->
                     positionsServiceFactory = PerResourcePositionsService.createFactory("image/*")
                 Format.READIUM_AUDIOBOOK, Format.READIUM_AUDIOBOOK_MANIFEST, Format.LCP_PROTECTED_AUDIOBOOK ->

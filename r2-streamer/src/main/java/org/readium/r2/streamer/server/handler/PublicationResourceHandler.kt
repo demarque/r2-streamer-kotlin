@@ -53,7 +53,7 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
 
         try {
             serveResponse(session, resource)
-        } catch(e: Resource.Error) {
+        } catch(e: Resource.Exception) {
             Timber.e(e)
             responseFromFailure(e)
                 .also { resource.close() }
@@ -93,15 +93,16 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
             }
         }
 
+        val dataLength = resource.length().getOrThrow()
+
         // Change return code and add Content-Range header when skipping is requested
         return if (rangeRequest != null && startFrom >= 0) {
-            val dataLength = resource.length().getOrThrow()
             if (endAt < 0) {
                 endAt = dataLength - 1
             }
 
             if (startFrom >= dataLength) {
-                createResponse(Status.RANGE_NOT_SATISFIABLE, MIME_PLAINTEXT, "")
+                createResponse(Status.RANGE_NOT_SATISFIABLE, MIME_PLAINTEXT, "", dataLength)
                     .apply {
                         addHeader("Content-Range", "bytes 0-0/$dataLength")
                         addHeader("ETag", etag)
@@ -110,8 +111,7 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
                     }
 
             } else {
-                val responseStream = ResourceInputStream(resource, autocloseResource = true, range = startFrom..endAt)
-                createResponse(Status.PARTIAL_CONTENT, mimeType, responseStream)
+                createResponse(Status.PARTIAL_CONTENT, mimeType, ResourceInputStream(resource, autocloseResource = true, range = startFrom..endAt), dataLength)
                     .apply {
                         addHeader("Content-Range", "bytes $startFrom-$endAt/$dataLength")
                         addHeader("ETag", etag)
@@ -119,14 +119,14 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
             }
         } else {
             if (etag == session.headers["if-none-match"])
-                createResponse(Status.NOT_MODIFIED, mimeType, "")
+                createResponse(Status.NOT_MODIFIED, mimeType, "", dataLength)
                     .also {
                         resource.close()
                     }
             else {
                 // FIXME: De Marque: We can't use the ResourceInputStream because NetGalley's LCPDFs are using deflate instead of stored for the PDF file, which produces very bad performances with random access
-                createResponse(Status.OK, mimeType, ByteArrayInputStream(resource.read().getOrThrow()))
-                // createResponse(Status.OK, mimeType, ResourceInputStream(resource, autocloseResource = true))
+                createResponse(Status.OK, mimeType, ByteArrayInputStream(resource.read().getOrThrow()), dataLength)
+//                createResponse(Status.OK, mimeType, ResourceInputStream(resource, autocloseResource = true), dataLength)
                     .apply {
                         addHeader("ETag", etag)
                     }
@@ -134,15 +134,17 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
         }
     }
 
-    private fun createResponse(status: Status, mimeType: String, data: InputStream): Response {
+    private fun createResponse(status: Status, mimeType: String, data: InputStream, dataLength: Long): Response {
         val response = newChunkedResponse(status, mimeType, data.buffered())
         response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Content-Length", dataLength.toString())
         return response
     }
 
-    private fun createResponse(status: Status, mimeType: String, message: String): Response {
+    private fun createResponse(status: Status, mimeType: String, message: String, dataLength: Long): Response {
         val response = newFixedLengthResponse(status, mimeType, message)
         response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Content-Length", dataLength.toString())
         return response
     }
 
@@ -158,13 +160,13 @@ class PublicationResourceHandler : RouterNanoHTTPD.DefaultHandler() {
             "${filePath}?${session.queryParameterString}"
     }
 
-    private fun responseFromFailure(error: Resource.Error): Response {
+    private fun responseFromFailure(error: Resource.Exception): Response {
         val status = when(error) {
-            is Resource.Error.NotFound -> Status.NOT_FOUND
-            is Resource.Error.Forbidden -> Status.FORBIDDEN
-            is Resource.Error.Unavailable -> Status.SERVICE_UNAVAILABLE
-            is Resource.Error.BadRequest -> Status.BAD_REQUEST
-            is Resource.Error.Cancelled, is Resource.Error.OutOfMemory, is Resource.Error.Other -> Status.INTERNAL_ERROR
+            is Resource.Exception.NotFound -> Status.NOT_FOUND
+            is Resource.Exception.Forbidden -> Status.FORBIDDEN
+            is Resource.Exception.Unavailable -> Status.SERVICE_UNAVAILABLE
+            is Resource.Exception.BadRequest -> Status.BAD_REQUEST
+            is Resource.Exception.Cancelled, is Resource.Exception.OutOfMemory, is Resource.Exception.Other -> Status.INTERNAL_ERROR
         }
         return newFixedLengthResponse(status, mimeType, ResponseStatus.FAILURE_RESPONSE)
     }
