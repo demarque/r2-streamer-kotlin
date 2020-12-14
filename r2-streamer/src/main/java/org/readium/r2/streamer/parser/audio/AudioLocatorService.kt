@@ -6,13 +6,12 @@
 
 package org.readium.r2.streamer.parser.audio
 
-import org.readium.r2.shared.format.MediaType
 import org.readium.r2.shared.publication.Link
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.firstWithHref
 import org.readium.r2.shared.publication.services.LocatorService
-import org.readium.r2.shared.publication.services.PerResourcePositionsService
+import org.readium.r2.shared.util.mediatype.MediaType
 
 /** Locator service for audio publications. */
 class AudioLocatorService(private val readingOrder: List<Link>) : LocatorService {
