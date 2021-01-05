@@ -6,9 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0-beta.1]
+
 ## Changed
 
 * Upgraded to Kotlin 1.4.10.
+* `Streamer` is now expecting a `PublicationAsset` instead of a `File`. You can create custom implementations of `PublicationAsset` to open a publication from different medium, such as a file, a remote URL, in-memory bytes, etc.
+  * `FileAsset` can be used to replace `File` and provides the same behavior.
 
 
 ## [2.0.0-alpha.2]
@@ -65,4 +69,5 @@ server.loadCustomResource(assets.open("scripts/highlight.js"), "highlight.js", I
 [unreleased]: https://github.com/readium/r2-streamer-kotlin/compare/master...HEAD
 [2.0.0-alpha.1]: https://github.com/readium/r2-streamer-kotlin/compare/1.1.5...2.0.0-alpha.1
 [2.0.0-alpha.2]: https://github.com/readium/r2-streamer-kotlin/compare/2.0.0-alpha.1...2.0.0-alpha.2
+[2.0.0-beta.1]: https://github.com/readium/r2-streamer-kotlin/compare/2.0.0-alpha.2...2.0.0-beta.1
 
