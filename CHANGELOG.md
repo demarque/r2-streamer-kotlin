@@ -4,11 +4,25 @@ All notable changes to this project will be documented in this file.
 
 **Warning:** Features marked as *experimental* may change or be removed in a future release without notice. Use with caution.
 
-## [Unreleased]
+<!-- ## [Unreleased] -->
+
+## [2.0.0-beta.2]
+
+### Added
+
+* `Server.addPublication()` is a new API which replaces `addEpub()` and is easier to use.
+  * If the publication can be served, it will return the base URL which you need to provide to the Navigator `Activity` or `Fragment`.
+  * You do not need to give the publication filename nor add the server port in the `$key-publicationPort` `SharedPreference` value anymore.
+
+### Changed
+
+* The HTTP server now requests that publication resources are not cached by browsers.
+  * Caching poses a security risk for protected publications.
+
 
 ## [2.0.0-beta.1]
 
-## Changed
+### Changed
 
 * Upgraded to Kotlin 1.4.10.
 * `Streamer` is now expecting a `PublicationAsset` instead of a `File`. You can create custom implementations of `PublicationAsset` to open a publication from different medium, such as a file, a remote URL, in-memory bytes, etc.
@@ -27,7 +41,7 @@ All notable changes to this project will be documented in this file.
 
 * `Container` and `ContentFilters` were replaced by a shared implementation of a [`Fetcher`](https://readium.org/architecture/proposals/002-composite-fetcher-api).
 
-## Fixed
+### Fixed
 
 * Readium can now open PDF documents of any size without crashing. However, LCP protected PDFs are still limited by the available memory.
 * Various HTTP server fixes and optimizations.
@@ -70,4 +84,5 @@ server.loadCustomResource(assets.open("scripts/highlight.js"), "highlight.js", I
 [2.0.0-alpha.1]: https://github.com/readium/r2-streamer-kotlin/compare/1.1.5...2.0.0-alpha.1
 [2.0.0-alpha.2]: https://github.com/readium/r2-streamer-kotlin/compare/2.0.0-alpha.1...2.0.0-alpha.2
 [2.0.0-beta.1]: https://github.com/readium/r2-streamer-kotlin/compare/2.0.0-alpha.2...2.0.0-beta.1
+[2.0.0-beta.2]: https://github.com/readium/r2-streamer-kotlin/compare/2.0.0-beta.1...2.0.0-beta.2
 
